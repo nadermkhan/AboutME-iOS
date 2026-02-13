@@ -1,0 +1,45 @@
+name: Build Unsigned IPA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build archive
+        run: |
+          xcodebuild archive \
+            -project AboutNader.xcodeproj \
+            -scheme AboutNader \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath $RUNNER_TEMP/AboutNader.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+
+      - name: Create unsigned IPA
+        run: |
+          mkdir -p $RUNNER_TEMP/Payload
+          cp -r $RUNNER_TEMP/AboutNader.xcarchive/Products/Applications/AboutNader.app $RUNNER_TEMP/Payload/
+          cd $RUNNER_TEMP
+          zip -r AboutNader-unsigned.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AboutNader-unsigned.ipa
+          path: ${{ runner.temp }}/AboutNader-unsigned.ipa
